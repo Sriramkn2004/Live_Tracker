@@ -34,10 +34,17 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // MongoDB connection
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/location_tracker';
+const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/location_tracker';
+console.log('Connecting to MongoDB:', mongoUri);
 mongoose.connect(mongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+}).then(() => {
+  console.log('MongoDB connected successfully');
+}).catch((error) => {
+  console.error('MongoDB connection error:', error);
 });
 
 // Schema for tracking data
