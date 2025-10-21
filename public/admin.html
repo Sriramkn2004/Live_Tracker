@@ -183,7 +183,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap" async defer></script>
     <script>
         // Socket.io connection for real-time updates
         const socket = io();
@@ -418,13 +418,29 @@
         // Load initial data
         async function loadInitialData() {
             try {
+                console.log('Loading initial data...');
+                
                 // Load tracking data
                 const trackingResponse = await fetch('/api/tracking-data');
+                console.log('Tracking response status:', trackingResponse.status);
+                
+                if (!trackingResponse.ok) {
+                    throw new Error(`HTTP error! status: ${trackingResponse.status}`);
+                }
+                
                 trackingData = await trackingResponse.json();
+                console.log('Loaded tracking data:', trackingData);
                 
                 // Load links
                 const linksResponse = await fetch('/api/links');
+                console.log('Links response status:', linksResponse.status);
+                
+                if (!linksResponse.ok) {
+                    throw new Error(`HTTP error! status: ${linksResponse.status}`);
+                }
+                
                 links = await linksResponse.json();
+                console.log('Loaded links:', links);
                 
                 // Update unique IPs
                 trackingData.forEach(data => {
@@ -436,8 +452,20 @@
                 updateTrackingTable();
                 updateLinksList();
                 
+                console.log('Initial data loaded successfully');
+                
             } catch (error) {
                 console.error('Error loading initial data:', error);
+                
+                // Show error message in the table
+                const tbody = document.getElementById('trackingTableBody');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Error loading data: ${error.message}
+                        </td>
+                    </tr>
+                `;
             }
         }
         

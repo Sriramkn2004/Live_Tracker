@@ -140,8 +140,11 @@ app.get('/track/:linkId', async (req, res) => {
 // Save tracking data
 app.post('/api/track', async (req, res) => {
   try {
-    const { linkId, location, userAgent, browser, os } = req.body;
-    const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+    console.log('Tracking data received:', req.body);
+    const { linkId, location, userAgent, browser, os, ip: clientIp, city, country } = req.body;
+    const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || clientIp;
+    
+    console.log('Processing tracking data:', { linkId, ip, location, browser, os });
     
     const trackingData = new TrackingData({
       linkId,
@@ -149,16 +152,21 @@ app.post('/api/track', async (req, res) => {
       userAgent,
       location,
       browser,
-      os
+      os,
+      city,
+      country
     });
     
     await trackingData.save();
+    console.log('Tracking data saved successfully:', trackingData);
     
     // Emit real-time update to admin dashboard
     io.emit('newTrackingData', trackingData);
+    console.log('Real-time update sent to admin dashboard');
     
     res.json({ success: true });
   } catch (error) {
+    console.error('Error saving tracking data:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -166,9 +174,12 @@ app.post('/api/track', async (req, res) => {
 // Get all tracking data
 app.get('/api/tracking-data', async (req, res) => {
   try {
+    console.log('Fetching tracking data...');
     const data = await TrackingData.find().sort({ timestamp: -1 });
+    console.log('Found tracking data:', data.length, 'records');
     res.json(data);
   } catch (error) {
+    console.error('Error fetching tracking data:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -176,9 +187,12 @@ app.get('/api/tracking-data', async (req, res) => {
 // Get all generated links
 app.get('/api/links', async (req, res) => {
   try {
+    console.log('Fetching generated links...');
     const links = await GeneratedLink.find().sort({ createdAt: -1 });
+    console.log('Found links:', links.length, 'records');
     res.json(links);
   } catch (error) {
+    console.error('Error fetching links:', error);
     res.status(500).json({ error: error.message });
   }
 });

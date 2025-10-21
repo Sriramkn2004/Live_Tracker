@@ -128,14 +128,19 @@
         // Main tracking function
         async function trackUser() {
             try {
+                console.log("Starting tracking for linkId:", linkId);
+                
                 // Get browser info
                 const browserInfo = getBrowserInfo();
+                console.log("Browser info:", browserInfo);
                 
                 // Get location
                 const location = await getLocation();
+                console.log("Location:", location);
                 
                 // Get IP info
                 const ipInfo = await getIPInfo();
+                console.log("IP info:", ipInfo);
                 
                 // Prepare tracking data
                 const trackingData = {
@@ -147,6 +152,8 @@
                     ...ipInfo
                 };
                 
+                console.log("Sending tracking data:", trackingData);
+                
                 // Send tracking data to server
                 const response = await fetch('/api/track', {
                     method: 'POST',
@@ -156,14 +163,18 @@
                     body: JSON.stringify(trackingData)
                 });
                 
+                console.log("Response status:", response.status);
+                const responseData = await response.json();
+                console.log("Response data:", responseData);
+                
                 if (response.ok) {
                     console.log("Tracking data sent successfully");
                 } else {
-                    console.log("Error sending tracking data");
+                    console.log("Error sending tracking data:", responseData);
                 }
                 
             } catch (error) {
-                console.log("Error in tracking:", error);
+                console.error("Error in tracking:", error);
             }
         }
         
