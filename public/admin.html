@@ -183,61 +183,53 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap" async defer></script>
+    <!-- Using OpenStreetMap with Leaflet (free, no API key required) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Socket.io connection for real-time updates
         const socket = io();
         
-        // Google Maps
+        // Leaflet Maps (OpenStreetMap - free, no API key required)
         let map;
         let markers = [];
         
         function initMap() {
             try {
-                // Initialize map centered on India (since your data shows Indian coordinates)
-                map = new google.maps.Map(document.getElementById("map"), {
-                    zoom: 6,
-                    center: { lat: 20.5937, lng: 78.9629 }, // India center
-                    mapTypeId: google.maps.MapTypeId.ROADMAP
-                });
+                // Initialize Leaflet map centered on India
+                map = L.map('map').setView([20.5937, 78.9629], 6); // India center
                 
-                console.log('Google Maps initialized successfully');
+                // Add OpenStreetMap tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+                
+                console.log('Leaflet map initialized successfully');
                 
                 // Add existing markers
                 updateMapMarkers();
             } catch (error) {
-                console.error('Error initializing Google Maps:', error);
+                console.error('Error initializing map:', error);
                 // Show fallback message
                 document.getElementById("map").innerHTML = `
                     <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; color: #666;">
                         <i class="fas fa-map fa-3x mb-3"></i>
-                        <div>Google Maps failed to load</div>
+                        <div>Map failed to load</div>
                         <small>Map functionality unavailable</small>
                     </div>
                 `;
             }
         }
         
-        // Fallback if Google Maps fails to load
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                if (typeof google === 'undefined') {
-                    console.log('Google Maps failed to load, showing fallback');
-                    document.getElementById("map").innerHTML = `
-                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; color: #666;">
-                            <i class="fas fa-map fa-3x mb-3"></i>
-                            <div>Google Maps unavailable</div>
-                            <small>Map functionality disabled</small>
-                        </div>
-                    `;
-                }
-            }, 5000); // Wait 5 seconds for Google Maps to load
+        // Initialize map when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initMap, 1000); // Wait 1 second for DOM to be ready
         });
         
         function updateMapMarkers() {
-            // Check if Google Maps is loaded
-            if (typeof google === 'undefined' || !google.maps) {
-                console.log('Google Maps not loaded yet, skipping map update');
+            // Check if Leaflet is loaded
+            if (typeof L === 'undefined') {
+                console.log('Leaflet not loaded yet, skipping map update');
                 return;
             }
             
@@ -248,25 +240,15 @@
             }
             
             // Clear existing markers
-            markers.forEach(marker => marker.setMap(null));
+            markers.forEach(marker => map.removeLayer(marker));
             markers = [];
             
             // Add markers for each tracking data with location
             trackingData.forEach((data, index) => {
                 if (data.location && data.location.latitude && data.location.longitude) {
-                    const marker = new google.maps.Marker({
-                        position: { 
-                            lat: data.location.latitude, 
-                            lng: data.location.longitude 
-                        },
-                        map: map,
-                        title: `Location ${index + 1}`,
-                        label: `${index + 1}`
-                    });
-                    
-                    // Add info window
-                    const infoWindow = new google.maps.InfoWindow({
-                        content: `
+                    const marker = L.marker([data.location.latitude, data.location.longitude])
+                        .addTo(map)
+                        .bindPopup(`
                             <div style="padding: 10px;">
                                 <h6><i class="fas fa-map-marker-alt"></i> Location ${index + 1}</h6>
                                 <p><strong>Coordinates:</strong> ${data.location.latitude.toFixed(4)}, ${data.location.longitude.toFixed(4)}</p>
@@ -276,12 +258,7 @@
                                 <p><strong>Time:</strong> ${formatTimestamp(data.timestamp)}</p>
                                 <p><strong>Accuracy:</strong> ${data.location.accuracy ? data.location.accuracy.toFixed(0) + 'm' : 'Unknown'}</p>
                             </div>
-                        `
-                    });
-                    
-                    marker.addListener('click', () => {
-                        infoWindow.open(map, marker);
-                    });
+                        `);
                     
                     markers.push(marker);
                 }
@@ -289,9 +266,8 @@
             
             // Fit map to show all markers
             if (markers.length > 0) {
-                const bounds = new google.maps.LatLngBounds();
-                markers.forEach(marker => bounds.extend(marker.getPosition()));
-                map.fitBounds(bounds);
+                const group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.1));
             }
         }
         
