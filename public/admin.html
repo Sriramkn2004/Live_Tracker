@@ -401,7 +401,7 @@
                             <button class="btn btn-sm btn-outline-primary mb-1" onclick="copyLink('${link.fakeUrl}')">
                                 <i class="fas fa-copy"></i> Copy Link
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteLink('${link.linkId}')">
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteLink(this)" data-linkid="${link.linkId}">
                                 <i class="fas fa-trash"></i> Delete
                             </button>
                         </div>
@@ -424,11 +424,24 @@
         }
 
         // Delete a generated link
-        async function deleteLink(linkId) {
+        async function deleteLink(buttonElement) {
+            const linkId = buttonElement.getAttribute('data-linkid');
+            if (!linkId) {
+                console.error('No linkId found on delete button');
+                return;
+            }
+
             if (!confirm('Delete this link and its tracking data? This action cannot be undone.')) return;
 
             try {
-                const res = await fetch(`/api/links/${linkId}`, { method: 'DELETE' });
+                console.log('Deleting link:', linkId);
+                const res = await fetch(`/api/links/${linkId}`, { 
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
                 if (!res.ok) {
                     const data = await res.json().catch(() => ({}));
                     throw new Error(data.error || 'Failed to delete link');

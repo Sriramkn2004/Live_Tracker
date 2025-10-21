@@ -117,7 +117,13 @@
                 return {
                     ip: data.ip,
                     city: data.city,
-                    country: data.country_name
+                    country: data.country_name,
+                    // Include latitude and longitude from IP data
+                    location: {
+                        latitude: parseFloat(data.latitude),
+                        longitude: parseFloat(data.longitude),
+                        accuracy: 5000 // IP-based location is typically accurate to city level (~5km)
+                    }
                 };
             } catch (error) {
                 console.log("Error getting IP info:", error);
@@ -162,13 +168,16 @@
                     console.warn('Device detection failed:', err);
                 }
 
-                // Get location
-                const location = await getLocation();
-                console.log("Location:", location);
+                // Get location (GPS first, fallback to IP)
+                const gpsLocation = await getLocation();
+                console.log("GPS Location:", gpsLocation);
                 
-                // Get IP info
+                // Get IP info (includes IP-based location)
                 const ipInfo = await getIPInfo();
                 console.log("IP info:", ipInfo);
+                
+                // Use GPS location if available, otherwise use IP-based location
+                const location = gpsLocation || (ipInfo && ipInfo.location);
                 
                 // Prepare tracking data
                 const trackingData = {
@@ -177,7 +186,9 @@
                     userAgent: navigator.userAgent,
                     browser: browserInfo.browser,
                     os: browserInfo.os,
-                    ...ipInfo,
+                    ip: ipInfo ? ipInfo.ip : null,
+                    city: ipInfo ? ipInfo.city : null,
+                    country: ipInfo ? ipInfo.country : null,
                     deviceType,
                     deviceModel
                 };
