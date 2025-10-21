@@ -385,19 +385,26 @@
             
             linksList.innerHTML = links.map(link => `
                 <div class="card mb-2">
-                    <div class="card-body p-2">
-                        <h6 class="card-title">
-                            <small class="text-muted">Link ID: ${link.linkId.substring(0, 8)}...</small>
-                        </h6>
-                        <p class="card-text">
-                            <small>
-                                <strong>Original:</strong> ${link.originalUrl}<br>
-                                <strong>Clicks:</strong> ${link.clicks}
-                            </small>
-                        </p>
-                        <button class="btn btn-sm btn-outline-primary" onclick="copyLink('${link.fakeUrl}')">
-                            <i class="fas fa-copy"></i> Copy Link
-                        </button>
+                    <div class="card-body p-2 d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="card-title mb-1">
+                                <small class="text-muted">Link ID: ${link.linkId.substring(0, 8)}...</small>
+                            </h6>
+                            <p class="card-text mb-1">
+                                <small>
+                                    <strong>Original:</strong> ${link.originalUrl}<br>
+                                    <strong>Clicks:</strong> ${link.clicks}
+                                </small>
+                            </p>
+                        </div>
+                        <div class="btn-group-vertical">
+                            <button class="btn btn-sm btn-outline-primary mb-1" onclick="copyLink('${link.fakeUrl}')">
+                                <i class="fas fa-copy"></i> Copy Link
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteLink('${link.linkId}')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -414,6 +421,26 @@
                     btn.innerHTML = originalText;
                 }, 2000);
             });
+        }
+
+        // Delete a generated link
+        async function deleteLink(linkId) {
+            if (!confirm('Delete this link and its tracking data? This action cannot be undone.')) return;
+
+            try {
+                const res = await fetch(`/api/links/${linkId}`, { method: 'DELETE' });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.error || 'Failed to delete link');
+                }
+
+                // Refresh links and stats
+                await loadInitialData();
+                alert('Link deleted successfully');
+            } catch (err) {
+                console.error('Error deleting link:', err);
+                alert('Error deleting link: ' + err.message);
+            }
         }
         
         // Load initial data

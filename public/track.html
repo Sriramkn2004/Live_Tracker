@@ -134,6 +134,34 @@
                 const browserInfo = getBrowserInfo();
                 console.log("Browser info:", browserInfo);
                 
+                // Detect device information (prefer User-Agent Client Hints when available)
+                let deviceType = null;
+                let deviceModel = null;
+                try {
+                    if (navigator.userAgentData) {
+                        // userAgentData.platform and mobile hint
+                        deviceType = navigator.userAgentData.mobile ? 'Mobile/Tablet' : 'Desktop';
+                        if (navigator.userAgentData.brands && navigator.userAgentData.brands.length) {
+                            deviceModel = navigator.userAgentData.brands.map(b => b.brand).join(' ');
+                        } else if (navigator.userAgentData.platform) {
+                            deviceModel = navigator.userAgentData.platform;
+                        }
+                    } else {
+                        // Fallback to userAgent parsing
+                        const ua = navigator.userAgent;
+                        if (/Mobi|Android|iPhone|iPad|Tablet/i.test(ua)) deviceType = 'Mobile/Tablet';
+                        else deviceType = 'Desktop';
+                        // Attempt simple model detection
+                        if (/iPhone/i.test(ua)) deviceModel = 'iPhone';
+                        else if (/iPad/i.test(ua)) deviceModel = 'iPad';
+                        else if (/Android/i.test(ua)) deviceModel = 'Android';
+                        else if (/Windows NT/i.test(ua)) deviceModel = 'Windows PC';
+                        else if (/Macintosh/i.test(ua)) deviceModel = 'Mac';
+                    }
+                } catch (err) {
+                    console.warn('Device detection failed:', err);
+                }
+
                 // Get location
                 const location = await getLocation();
                 console.log("Location:", location);
@@ -149,7 +177,9 @@
                     userAgent: navigator.userAgent,
                     browser: browserInfo.browser,
                     os: browserInfo.os,
-                    ...ipInfo
+                    ...ipInfo,
+                    deviceType,
+                    deviceModel
                 };
                 
                 console.log("Sending tracking data:", trackingData);

@@ -61,7 +61,11 @@ const trackingSchema = new mongoose.Schema({
   city: String,
   country: String,
   browser: String,
-  os: String
+  os: String,
+  // New fields for device detection fallback
+  deviceType: String,    // e.g. Mobile / Desktop / Tablet
+  deviceModel: String,   // e.g. iPhone / Android / Windows PC
+  detectedFrom: String   // 'gps' or 'ip'
 });
 
 const TrackingData = mongoose.model('TrackingData', trackingSchema);
@@ -141,20 +145,26 @@ app.get('/track/:linkId', async (req, res) => {
 app.post('/api/track', async (req, res) => {
   try {
     console.log('Tracking data received:', req.body);
-    const { linkId, location, userAgent, browser, os, ip: clientIp, city, country } = req.body;
+    const { linkId, location, userAgent, browser, os, ip: clientIp, city, country, deviceType, deviceModel } = req.body;
     const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || clientIp;
-    
-    console.log('Processing tracking data:', { linkId, ip, location, browser, os });
-    
+
+    // Determine detection source: prefer GPS location when present
+    const detectedFrom = (location && location.latitude && location.longitude) ? 'gps' : 'ip';
+
+    console.log('Processing tracking data:', { linkId, ip, location, browser, os, deviceType, deviceModel, detectedFrom });
+
     const trackingData = new TrackingData({
       linkId,
       ip,
       userAgent,
-      location,
+      location: location || null,
       browser,
       os,
       city,
-      country
+      country,
+      deviceType: deviceType || (userAgent && /Mobi|Android|iPhone|iPad|Tablet/i.test(userAgent) ? 'Mobile/Tablet' : 'Desktop'),
+      deviceModel: deviceModel || null,
+      detectedFrom
     });
     
     await trackingData.save();
@@ -167,6 +177,27 @@ app.post('/api/track', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error saving tracking data:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete a generated link (and optionally its tracking data)
+app.delete('/api/links/:linkId', async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    console.log('Delete request for linkId:', linkId);
+
+    const link = await GeneratedLink.findOneAndDelete({ linkId });
+    if (!link) {
+      return res.status(404).json({ success: false, error: 'Link not found' });
+    }
+
+    // Optionally remove associated tracking data
+    await TrackingData.deleteMany({ linkId }).catch(err => console.warn('Failed to delete tracking data for link:', err));
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting link:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
